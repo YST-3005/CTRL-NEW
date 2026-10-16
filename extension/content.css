@@ -1,0 +1,24 @@
+.llg-badge {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.llg-alert {
+  background: rgba(255, 77, 109, 0.2);
+  color: #ffd0d8;
+}
+.llg-unknown {
+  background: rgba(255, 176, 32, 0.2);
+  color: #ffe0a3;
+}
+.llg-ok {
+  background: rgba(93, 255, 176, 0.12);
+  color: #b8ffd9;
+}
+.llg-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: #3cefff;
+  font-size: 12px;
+}

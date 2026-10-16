@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  --void: #04060c;
+  --navy: #0b1428;
+  --panel: rgba(8, 16, 36, 0.72);
+  --cyan: #3cefff;
+  --violet: #8f6bff;
+  --amber: #ffb020;
+  --alert: #ff4d6d;
+  --ok: #5dffb0;
+  --text: #e8f4ff;
+  --muted: #8aa0bd;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--void);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-plex), "IBM Plex Sans", system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(143, 107, 255, 0.16), transparent 50%),
+    radial-gradient(900px 500px at -10% 20%, rgba(60, 239, 255, 0.1), transparent 45%),
+    linear-gradient(180deg, #050814 0%, #070b16 40%, #04060c 100%);
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-syne), Syne, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1c3a55 transparent;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.hud-panel {
+  background: linear-gradient(180deg, rgba(14, 24, 48, 0.78), rgba(7, 12, 26, 0.86));
+  border: 1px solid rgba(60, 239, 255, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(143, 107, 255, 0.08) inset,
+    0 24px 80px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(18px);
+}
+
+.hud-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lab-viewport {
+  background:
+    radial-gradient(circle at 50% 120%, rgba(60, 239, 255, 0.12), transparent 55%),
+    linear-gradient(180deg, #07111f, #050814);
+  border: 1px solid rgba(60, 239, 255, 0.16);
+  box-shadow: inset 0 0 80px rgba(12, 40, 70, 0.45);
+}
+
+.nutrition-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.nutrition-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3cefff, #8f6bff);
+  transition: width 400ms ease;
+}
+
+.timeline-node {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.timeline-node::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  top: 0.4rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #3cefff;
+  box-shadow: 0 0 12px #3cefff;
+}
+
+.scanlines {
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 3px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "LabelLens Guardian Lens",
+  "version": "1.0.0",
+  "description": "Demonstration extension for the local Helion Market storefront only.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LabelLens Guardian"
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost:3000/*", "http://127.0.0.1:3000/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:3000/store*", "http://127.0.0.1:3000/store*"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ]
+}

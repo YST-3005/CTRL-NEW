@@ -1,0 +1,57 @@
+
+{
+  "name": "labellens-guardian",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LabelLens Guardian — cinematic 3D AI food intelligence platform",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@jridgewell/sourcemap-codec": "^1.6.0",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.75.0",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.3.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.22",
+    "gsap": "^3.13.0",
+    "lightningcss-win32-x64-msvc": "^1.33.0",
+    "motion-dom": "^14.3.0",
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "recharts": "^2.15.4",
+    "tailwind-merge": "^3.3.1",
+    "tesseract.js": "^6.0.1",
+    "three": "^0.180.0",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.18.8",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "eslint": "^9.36.0",
+    "eslint-config-next": "^15.5.4",
+    "jsdom": "^27.0.0",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
