@@ -221,3 +221,5 @@ export const COMMON_ALLERGENS = [
   "shellfish",
   "sesame",
 ] as const;
+
+export * from "./comparison";

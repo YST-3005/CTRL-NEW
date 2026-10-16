@@ -98,6 +98,88 @@ The entire engine is verified by a 15-case test suite (`Case A` through `Case O`
 
 ---
 
-## 6. Regulatory & Medical Disclaimer
+---
 
-LabelLens Guardian is an educational food-intelligence aid and research tool. It does **not** provide clinical diagnosis, medical prescription advice, or a legal guarantee against cross-contact or life-threatening anaphylactic reactions. Consumers must always consult the original physical package and their healthcare provider.
+## 7. Mission 3: Evidence-Grounded Dietary Comparison & Contradiction Engine (`src/lib/dietary/comparisonEngine.ts`)
+
+Mission 3 elevates simple rule checks into an auditable, evidence-grounded dietary decision system.
+
+### Explicit Result Statuses
+1. **`CONFIRMED_CONFLICT`**: Label text explicitly confirms an ingredient or nutrition value that violates a saved user preference or threshold.
+2. **`NO_DETECTED_CONFLICT`**: Label text was thoroughly examined, and no conflict was identified within the available readable evidence. *Note: Never equates to a guarantee of safety or complete absence.*
+3. **`UNCERTAIN`**: Relevant evidence exists, but the commercial origin is ambiguous (e.g. `glycerin`, `lecithin`) or the label's serving basis/units are incompatible with the configured threshold.
+4. **`MISSING_INFORMATION`**: A critical label section (e.g. ingredients or allergen statement) is unreadable or absent. Triggers mandatory fail-safe guardrails.
+5. **`UNRESOLVED_CONTRADICTION`**: Competing sources disagree (e.g., an LLM claims a product is vegan, but the physical label lists milk protein). The physical label evidence always takes precedence.
+6. **`NEEDS_USER_CONFIRMATION`**: An ambiguous ingredient or contradiction could alter the dietary outcome. The system prompts the user to review the competing interpretations and confirm or leave unresolved.
+
+### Traceable Evidence References
+Every comparison object (`EvidenceGroundedComparison`) maintains:
+- `supportingEvidenceRefs`: Array of exact ingredient IDs, evidence IDs, or panel identifiers.
+- `originalExtractedText`: Exact, unaltered string snippet from the OCR scan.
+- `normalizedValue`: Standardized interpretation (e.g. 14g sugar, milk allergen tag).
+- `thresholdApplied`: Operator, numerical limit, unit, and serving basis.
+
+Selecting any alert card in the UI automatically navigates to and highlights the supporting evidence in the matrix or panel.
+
+---
+
+## 8. Caregiver Dashboard, Nutrition Thresholds & Personalized Alerts (`src/app/caregiver/page.tsx`)
+
+A dedicated caregiver management portal allowing authorized caregivers to safeguard dependents:
+
+- **Dependent Profile**: Configurable identifier, vegan/vegetarian diet plan, multi-allergen avoidance list, and custom ingredients of concern.
+- **Nutrition Thresholds**: Numeric limits for sugar, sodium, saturated fat, calories, etc., with support for `>=`, `<=`, `>`, `<`.
+- **Unit & Serving Basis Normalization**: Evaluates thresholds per printed serving or normalized to 100g/100ml. If units are incompatible (e.g. calories vs milligrams) or serving size lacks gram conversion, the system generates an `UNCERTAIN` finding rather than an incorrect calculation.
+- **Automatic Scan Verification**: Every label scan instantly evaluates both personal preferences and the caregiver profile, generating evidence-linked alerts in real time.
+- **Persistence & User Isolation**: Stored under isolated user keys (`llg.caregiverProfiles`), preventing unauthorized cross-account contamination.
+
+---
+
+## 9. Comprehensive Automated Test Matrix (69 Total Tests)
+
+LabelLens Guardian is validated across 13 dedicated test suites totaling 69 passing tests:
+
+1. **`src/lib/dietary/comparisonEngine.test.ts` (15 Scenarios)**:
+   - Scenario 1: Matching evidence supports dietary conflict.
+   - Scenario 2: Matching evidence supports no detected conflict within scope.
+   - Scenario 3: Model contradicts explicit extracted evidence.
+   - Scenario 4: Extracted text and model allergen claims disagree.
+   - Scenario 5: Ambiguous ingredient requires user confirmation.
+   - Scenario 6: Unreadable or missing ingredient remains unresolved.
+   - Scenario 7: Cropped ingredient list cannot be treated as complete.
+   - Scenario 8: Nutrition value conflicts with source text (negative values).
+   - Scenario 9: Different dietary preferences produce different results on same label.
+   - Scenario 10: Updating dietary preferences recalculates comparisons dynamically.
+   - Scenario 11: Correcting an extracted field updates evidence and comparison.
+   - Scenario 12: Evidence links navigate to correct source field IDs.
+   - Scenario 13: Missing evidence produces no fabricated links.
+   - Scenario 14: Unanswered confirmation requests remain in `NEEDS_USER_CONFIRMATION`.
+   - Scenario 15: No unsupported medical, safety, or certification claims produced.
+
+2. **`src/lib/caregiver/caregiver.test.ts` (15 Scenarios)**:
+   - Caregiver 1: Successful creation and saving of dependent profile.
+   - Caregiver 2: Persistence across session restores.
+   - Caregiver 3: User isolation (zero cross-user profile contamination).
+   - Caregiver 4: Declared ingredient triggers configured restriction.
+   - Caregiver 5: Nutrition value exceeding threshold triggers alert.
+   - Caregiver 6: Incompatible units flagged as `UNCERTAIN`.
+   - Caregiver 7: Missing nutrient flagged as `MISSING_INFORMATION`.
+   - Caregiver 8: Multiple dependents receive distinct personalized alerts on same label.
+   - Caregiver 9: Updating threshold limit recalculates outcome dynamically.
+   - Caregiver 10: Updating allergen avoidance recalculates findings.
+   - Caregiver 11: Every alert carries exact supporting text and evidence ref.
+   - Caregiver 12: Model assertions cannot suppress detected label allergens.
+   - Caregiver 13: `leave_unresolved` maintains honest `UNCERTAIN` status.
+   - Caregiver 14: Incomplete label coverage produces guardrail alert.
+   - Caregiver 15: Fallback defaults initialize safely.
+
+3. **`src/lib/ocr/reliability.test.ts` (15 Cases A–O)**: Optical quality, blur, truncation, confidence null handling, fail-safe rules, and persistence.
+4. **Unit & Integration Suites (24 Tests)**: Serving size scaling, vegan origin classifier, label parser, radar diff, chat citations, notification simulation, search filtering.
+
+---
+
+## 10. Regulatory, Clinical & Safety Limitations
+
+1. **OCR Invariance**: OCR systems are subject to character recognition inaccuracies on curved, shiny, or folded packaging.
+2. **Heuristic Image Assessment**: Optical diagnostics (blur, glare, resolution) provide probabilistic guidance for retakes, not certified laboratory benchmarks.
+3. **Informational Aid Only**: LabelLens Guardian is not a medical device, diagnosis tool, or certification authority. Users with severe allergies must always verify physical packaging directly.

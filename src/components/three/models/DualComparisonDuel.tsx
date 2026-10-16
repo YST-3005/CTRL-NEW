@@ -16,9 +16,16 @@ type ProductLike = {
 type Props = {
   leftProduct: ProductLike;
   rightProduct: ProductLike;
+  accentLeft?: string;
+  accentRight?: string;
 };
 
-export function DualComparisonDuel({ leftProduct, rightProduct }: Props) {
+export function DualComparisonDuel({
+  leftProduct,
+  rightProduct,
+  accentLeft = "#3cefff",
+  accentRight = "#8f6bff",
+}: Props) {
   const leftName = leftProduct?.name ?? "Select Product A";
   const rightName = rightProduct?.name ?? "Select Product B";
   const leftBrand = leftProduct?.brand ?? "";
@@ -28,14 +35,14 @@ export function DualComparisonDuel({ leftProduct, rightProduct }: Props) {
     <group>
       <ComparisonPod
         position={[-1.5, 0, 0]}
-        accent="#3cefff"
+        accent={accentLeft}
         label="POD ALPHA"
         productName={leftName}
         brand={leftBrand}
       />
       <ComparisonPod
         position={[1.5, 0, 0]}
-        accent="#8f6bff"
+        accent={accentRight}
         label="POD BETA"
         productName={rightName}
         brand={rightBrand}

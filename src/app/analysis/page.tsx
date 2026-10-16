@@ -14,6 +14,7 @@ import { ExplodedIngredientField, type ExplodedIngredientItem } from "@/componen
 import { CinematicProduct } from "@/components/three/models/CinematicProduct";
 import { ExtractionIntegrityDeck } from "@/components/analysis/ExtractionIntegrityDeck";
 import { ImageQualityHud } from "@/components/scanner/ImageQualityHud";
+import { EvidenceGroundedAlerts } from "@/components/analysis/EvidenceGroundedAlerts";
 
 const MotionLi = motion.li as any;
 
@@ -29,9 +30,30 @@ export default function AnalysisPage() {
   const startUpload = useGuardianStore((s) => s.startUpload);
   const activeQualityReport = useGuardianStore((s) => s.activeQualityReport);
   const phase = useGuardianStore((s) => s.phase);
+  const activeComparisons = useGuardianStore((s) => s.activeComparisons());
+  const resolveConfirmation = useGuardianStore((s) => s.resolveConfirmation);
+  const dismissAlert = useGuardianStore((s) => s.dismissAlert);
   const findings = product ? evaluateDietaryRules(product, prefs) : [];
   const [amount, setAmount] = useState<number>(product?.nutrition.servingSizeAmount ?? 55);
   const [unit, setUnit] = useState(product?.nutrition.servingSizeUnit ?? "g");
+
+  const handleNavigateToEvidence = (ref: string) => {
+    if (ref.startsWith("ing") || ref.includes("ing") || ref.includes("ingredient")) {
+      const match = product?.ingredients.find((i) => i.id === ref || ref.includes(i.id));
+      if (match) selectIngredient(match.id);
+      setViewMode("list");
+      setTimeout(() => {
+        const el = document.getElementById(`ingredient-item-${ref}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    } else if (ref.includes("nutrition")) {
+      const el = document.getElementById("panel-nutrition-facts");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else if (ref.includes("allergen")) {
+      const el = document.getElementById("panel-allergens-section");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   useEffect(() => {
     if (!product) return;
@@ -197,6 +219,7 @@ export default function AnalysisPage() {
                   transition={{ delay: idx * 0.04 }}
                 >
                   <button
+                    id={`ingredient-item-${ing.id}`}
                     className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition-all ${
                       selected === ing.id
                         ? "border-cyan-300 bg-cyan-400/15 shadow-[0_0_12px_rgba(60,239,255,0.2)]"
@@ -298,7 +321,8 @@ export default function AnalysisPage() {
         </Panel>
       </div>
 
-      <Panel kicker="Printed label" title="Nutrition facts">
+      <div id="panel-nutrition-facts">
+        <Panel kicker="Printed label" title="Nutrition facts">
         <p className="mb-3 text-sm text-slate-400">
           Serving {product.nutrition.servingSizeAmount} {product.nutrition.servingSizeUnit}
         </p>
@@ -333,6 +357,7 @@ export default function AnalysisPage() {
         </div>
         {product.nutrition.incomplete && <p className="mt-2 text-amber-200">Nutrition panel incomplete.</p>}
       </Panel>
+      </div>
 
       <Panel kicker="Reality check" title="Serving-size calculator">
         <p className="mb-3 text-xs text-slate-400">
@@ -409,20 +434,22 @@ export default function AnalysisPage() {
         </Panel>
       </div>
 
-      <Panel kicker="Allergens & rules" title="Warnings from your profile">
-        {product.allergenStatement && <p className="mb-3 text-sm">{product.allergenStatement.text}</p>}
-        <ul className="space-y-2">
-          {findings.map((f) => (
-            <li key={f.id} className="rounded-lg border border-white/10 p-3 text-sm">
-              <Badge tone={f.severity === "alert" ? "alert" : f.severity === "warning" ? "amber" : "muted"}>
-                {f.title}
-              </Badge>
-              <p className="mt-1 text-slate-300">{f.detail}</p>
-            </li>
-          ))}
-          {!findings.length && <li className="text-sm text-slate-400">No preference-based alerts on this label.</li>}
-        </ul>
-      </Panel>
+      <div id="panel-allergens-section">
+        <Panel kicker="Dietary comparison" title="Evidence-grounded alerts & rules">
+          {product.allergenStatement && (
+            <div className="mb-3 rounded-lg border border-white/10 bg-black/30 p-2.5 text-xs font-mono text-cyan-200">
+              <span className="text-slate-400 block mb-1">Declared &lsquo;Contains:&rsquo; Statement:</span>
+              &ldquo;{product.allergenStatement.text}&rdquo;
+            </div>
+          )}
+          <EvidenceGroundedAlerts
+            comparisons={activeComparisons}
+            onNavigateToEvidence={handleNavigateToEvidence}
+            onResolveConfirmation={resolveConfirmation}
+            onDismissAlert={dismissAlert}
+          />
+        </Panel>
+      </div>
 
       <Panel kicker="Gaps" title="Missing & uncertain">
         <ul className="list-disc pl-5 text-sm text-slate-300">

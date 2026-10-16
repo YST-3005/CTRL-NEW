@@ -52,6 +52,7 @@ export function Button({
   onClick,
   type = "button",
   variant = "primary",
+  size = "md",
   disabled,
   className,
   ...rest
@@ -60,6 +61,7 @@ export function Button({
   onClick?: () => void;
   type?: "button" | "submit";
   variant?: "primary" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
   disabled?: boolean;
   className?: string;
 } & ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -69,13 +71,19 @@ export function Button({
     ghost: "border border-cyan-400/30 bg-transparent text-cyan-100 hover:bg-cyan-400/10",
     danger: "bg-rose-500/80 text-white hover:bg-rose-400",
   };
+  const sizeStyles = {
+    sm: "px-2.5 py-1 text-xs",
+    md: "px-4 py-2 text-sm",
+    lg: "px-6 py-3 text-base",
+  };
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "rounded-full px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+        "rounded-full font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+        sizeStyles[size],
         styles[variant],
         className,
       )}

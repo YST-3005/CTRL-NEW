@@ -1,5 +1,13 @@
-import type { CaregiverAlert, CaregiverContact, ChatMessage, DietaryPreferences, ScanRecord, UserProfile } from "@/types";
-import { DEFAULT_PREFERENCES } from "@/types";
+import type {
+  CaregiverAlert,
+  CaregiverContact,
+  ChatMessage,
+  DietaryPreferences,
+  ScanRecord,
+  UserProfile,
+  CaregiverProfile,
+} from "@/types";
+import { DEFAULT_PREFERENCES, DEFAULT_CAREGIVER_THRESHOLDS } from "@/types";
 
 const KEY = {
   user: "llg.user",
@@ -11,6 +19,7 @@ const KEY = {
   users: "llg.demoUsers",
   optin: "llg.caregiverOptIn",
   overrides: "llg.veganOverrides",
+  caregiverProfiles: "llg.caregiverProfiles",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -101,7 +110,37 @@ export const localDb = {
     all[userId] = map;
     write(KEY.overrides, all);
   },
+  getCaregiverProfile(userId: string): CaregiverProfile {
+    const all = read<Record<string, CaregiverProfile>>(KEY.caregiverProfiles, {});
+    if (all[userId]) return all[userId];
+    const initial = defaultCaregiverProfile(userId);
+    all[userId] = initial;
+    write(KEY.caregiverProfiles, all);
+    return initial;
+  },
+  setCaregiverProfile(userId: string, profile: CaregiverProfile) {
+    const all = read<Record<string, CaregiverProfile>>(KEY.caregiverProfiles, {});
+    all[userId] = profile;
+    write(KEY.caregiverProfiles, all);
+  },
 };
+
+export function defaultCaregiverProfile(userId: string): CaregiverProfile {
+  return {
+    userId,
+    dependentName: "Primary Dependent",
+    dietaryPlan: {
+      vegan: false,
+      vegetarian: false,
+      allergies: ["milk", "peanuts", "eggs"],
+      ingredientsToAvoid: ["added sugar"],
+    },
+    thresholds: DEFAULT_CAREGIVER_THRESHOLDS,
+    userConfirmations: {},
+    dismissedAlertIds: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 export interface DemoAccount {
   email: string;

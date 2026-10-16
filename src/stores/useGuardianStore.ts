@@ -25,7 +25,10 @@ import {
   type ScanRecord,
   type UserProfile,
   type VeganStatus,
+  type CaregiverProfile,
+  type EvidenceGroundedComparison,
 } from "@/types";
+import { evaluateEvidenceGroundedComparisons } from "@/lib/dietary/comparisonEngine";
 
 interface GuardianState {
   hydrated: boolean;
@@ -81,6 +84,13 @@ interface GuardianState {
   veganOverrides: Record<string, VeganStatus>;
   setVeganOverride: (name: string, status: VeganStatus) => void;
   activeQualityReport: ImageQualityReport | null;
+  caregiverProfile: CaregiverProfile | null;
+  highlightedEvidenceId: string | null;
+  saveCaregiverProfile: (profile: CaregiverProfile) => void;
+  resolveConfirmation: (comparisonId: string, actionValue: string) => void;
+  dismissAlert: (comparisonId: string) => void;
+  setHighlightedEvidenceId: (id: string | null) => void;
+  activeComparisons: () => EvidenceGroundedComparison[];
   updateFieldCorrection: (
     fieldName: "product_name" | "ingredients" | "allergens" | "nutrition" | "serving_size",
     value: any,
@@ -126,6 +136,8 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
   alerts: [],
   activeQualityReport: null,
   veganOverrides: {},
+  caregiverProfile: null,
+  highlightedEvidenceId: null,
   forceFailNext: false,
   hydrate: () => {
     const user = localDb.getUser();
@@ -143,6 +155,7 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
       alerts: localDb.getAlerts(user.id),
       caregiverOptIn: localDb.getOptIn(user.id),
       veganOverrides: localDb.getOverrides(user.id),
+      caregiverProfile: localDb.getCaregiverProfile(user.id),
       authMode: user.authMode,
     });
   },
@@ -198,6 +211,7 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
       prefs: DEFAULT_PREFERENCES,
       scans: [],
       chat: [],
+      caregiverProfile: localDb.getCaregiverProfile(profile.id),
     });
     persist(profile.id, [], DEFAULT_PREFERENCES, []);
     return true;
@@ -229,6 +243,7 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
           chat: localDb.getChat(profile.id),
           caregiver: localDb.getCaregiver(profile.id),
           alerts: localDb.getAlerts(profile.id),
+          caregiverProfile: localDb.getCaregiverProfile(profile.id),
         });
         return true;
       }
@@ -249,6 +264,7 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
       chat: localDb.getChat(found.profile.id),
       caregiver: localDb.getCaregiver(found.profile.id),
       alerts: localDb.getAlerts(found.profile.id),
+      caregiverProfile: localDb.getCaregiverProfile(found.profile.id),
     });
     return true;
   },
@@ -551,6 +567,50 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
     const alerts = get().alerts.filter((a) => a.id !== id);
     set({ alerts });
     if (user) localDb.setAlerts(user.id, alerts);
+  },
+  saveCaregiverProfile: (profile: CaregiverProfile) => {
+    const { user } = get();
+    set({ caregiverProfile: profile });
+    if (user) localDb.setCaregiverProfile(user.id, profile);
+  },
+  resolveConfirmation: (comparisonId: string, actionValue: string) => {
+    const { user, caregiverProfile } = get();
+    if (!caregiverProfile) return;
+    const updated: CaregiverProfile = {
+      ...caregiverProfile,
+      userConfirmations: {
+        ...caregiverProfile.userConfirmations,
+        [comparisonId]: { action: actionValue, decidedAt: new Date().toISOString() },
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    set({ caregiverProfile: updated });
+    if (user) localDb.setCaregiverProfile(user.id, updated);
+  },
+  dismissAlert: (comparisonId: string) => {
+    const { user, caregiverProfile } = get();
+    if (!caregiverProfile) return;
+    const updated: CaregiverProfile = {
+      ...caregiverProfile,
+      dismissedAlertIds: Array.from(new Set([...caregiverProfile.dismissedAlertIds, comparisonId])),
+      updatedAt: new Date().toISOString(),
+    };
+    set({ caregiverProfile: updated });
+    if (user) localDb.setCaregiverProfile(user.id, updated);
+  },
+  setHighlightedEvidenceId: (id: string | null) => {
+    set({ highlightedEvidenceId: id });
+  },
+  activeComparisons: () => {
+    const product = get().activeProduct();
+    if (!product) return [];
+    const prefs = get().prefs;
+    const caregiverProfile = get().caregiverProfile;
+    return evaluateEvidenceGroundedComparisons({
+      product,
+      userPrefs: prefs,
+      caregiverProfile,
+    });
   },
   activeProduct: () => {
     const { scans, activeScanId } = get();

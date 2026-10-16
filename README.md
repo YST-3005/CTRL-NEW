@@ -6,17 +6,19 @@ Cinematic 3D food-intelligence laboratory for reading packaged food labels with 
 > **Instructor / Evaluator Quick Start:**
 > - Review the complete [OCR Reliability Architecture](OCR_RELIABILITY.md)
 > - Follow the step-by-step [Instructor Testing Guide](TESTING_GUIDE.md)
-> - Run the automated test suite: `npx vitest run` (39/39 passing)
+> - Run the automated test suite: `npx vitest run` (69/69 passing across 13 test files)
 > - Production server runs locally on `http://localhost:3000` with instant zero-credential demo login.
 
 ## Core Capabilities (Working without paid APIs)
 
+- **Evidence-Grounded Dietary Comparison Engine:** Typed comparisons evaluating user preferences and caregiver thresholds against extracted label facts. Explicit statuses: `CONFIRMED_CONFLICT`, `NO_DETECTED_CONFLICT`, `UNCERTAIN`, `MISSING_INFORMATION`, `UNRESOLVED_CONTRADICTION`, and `NEEDS_USER_CONFIRMATION`.
+- **Traceable Evidence Links:** Clickable conflict alerts that navigate directly to and highlight supporting ingredient or nutrition facts.
+- **Contradiction Detection & Human-in-the-Loop:** Flags disagreements between external models and physical label evidence, ambiguous ingredient origins (e.g. glycerin), and invalid nutrition figures.
+- **Caregiver Dashboard & Nutrition Thresholds:** Manage dependent dietary plans, major allergens, custom avoidances, and numeric nutrition thresholds (sugar, sodium, sat fat, calories) with automatic scan evaluation.
 - **Optical Quality Assessment HUD:** Client-side blur (Laplacian variance), low resolution, exposure, specular glare, and edge-crop heuristics with specific user retake guidance.
 - **Fail-Safe Dietary Invariance:** Missing OCR output is **never** treated as proof of absence. Unreadable allergen statements flag `ALLERGEN STATUS UNKNOWN`. Incomplete ingredient lists trigger `INCOMPLETE INGREDIENT INFORMATION`.
 - **Extraction Integrity & Human-in-the-Loop:** Explicit field states (`CONFIRMED`, `UNCERTAIN`, `NEEDS_REVIEW`, `MISSING`, `USER_CORRECTED`). Original OCR strings are preserved alongside user corrections with immediate dynamic rule recalculation.
-- **Rescan & Close-Up Workflow:** Target panel image replacement and clearly labeled manual text entry fallback.
 - **On-Device OCR & Sample Fixtures:** Real in-browser OCR (Tesseract.js) + pre-configured sample products for instant review.
-- **Cinematic 3D Food Lab:** Real WebGL product chamber, interactive nodes, nutrition charts, and comparison radar.
 
 - Demo register / login / logout / session restore (localStorage, hashed passwords)
 - Scanner chamber: drag-and-drop, file picker, camera capture, preview, validation, sample products, manual text

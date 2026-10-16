@@ -14,11 +14,21 @@ npx vitest run
 
 ### Expected Output:
 ```
-Test Files  11 passed (11)
-Tests       39 passed (39)
+Test Files  13 passed (13)
+Tests       69 passed (69)
 ```
 
-To run specifically the OCR Reliability test suite:
+To run specifically the Evidence-Grounded Comparison test suite:
+```bash
+npx vitest run src/lib/dietary/comparisonEngine.test.ts
+```
+
+To run specifically the Caregiver Settings & Alerts test suite:
+```bash
+npx vitest run src/lib/caregiver/caregiver.test.ts
+```
+
+To run the OCR Reliability test suite:
 ```bash
 npx vitest run src/lib/ocr/reliability.test.ts
 ```
@@ -116,15 +126,74 @@ Open the live application at:
 
 ---
 
-## 3. Instructor Requirement Verification Matrix
+---
 
-| Requirement | Code Implementation | Test File / Case | UI Location |
+### Step 8: Evidence-Grounded Alerts & Clickable Evidence Navigation (Mission 3)
+1. On `/analysis`, scroll down to **Dietary comparison (Evidence-grounded alerts & rules)**.
+2. Notice the explicit status badges:
+   - `CONFIRMED CONFLICT` (red badge + alert icon)
+   - `NO DETECTED CONFLICT` (emerald badge + checkmark)
+   - `UNCERTAIN` (amber badge + warning icon)
+   - `MISSING INFORMATION` (amber badge + list icon)
+   - `UNRESOLVED CONTRADICTION` (fuchsia badge + conflict icon)
+   - `NEEDS CONFIRMATION` (cyan badge + question icon)
+3. For each alert, inspect the exact quoted label snippet, normalized value, and configured threshold.
+4. Click **🔍 View Label Evidence**:
+   - The interface instantly scrolls to the exact ingredient in the list or the nutrition facts panel and highlights it with a radiant cyan glow.
+
+---
+
+### Step 9: Contradiction Detection & User Ambiguity Confirmation (Mission 3)
+1. Test with an ambiguous ingredient (e.g. `glycerin` in an oat bar):
+   - Notice the alert badge indicates `NEEDS CONFIRMATION`.
+2. Click **⚠️ Review & Resolve**:
+   - A modal displays:
+     - The exact original label phrase: *&ldquo;glycerin&rdquo;*
+     - Competing interpretations: *Plant-derived synthesis* vs *Animal-derived rendering*
+     - Clear explanation of why the distinction affects your saved dietary plan.
+   - Click **Confirm Plant Origin**:
+     - The status dynamically updates to `NO DETECTED CONFLICT` (`✓ User Confirmed`).
+   - Or click **Leave Unresolved**:
+     - The system maintains an honest `UNCERTAIN` status without guessing.
+
+---
+
+### Step 10: Caregiver Portal, Threshold Configuration & Personalized Alerts
+1. In the navigation bar, click **Caregiver** (`/caregiver`).
+2. Manage the Dependent Dietary Profile:
+   - Edit Dependent Name (e.g., *Maya*).
+   - Toggle Strict Vegan / Vegetarian.
+   - Toggle major allergens (e.g. Milk, Peanuts, Tree Nuts) and enter custom ingredients of concern.
+   - Click **Save Dietary Profile**.
+3. Configure Numeric Nutrition Thresholds:
+   - Review active limits (e.g., *Total Sugars >= 12g*, *Sodium >= 400mg*).
+   - Add a new limit: *Nutrient: Saturated Fat*, *Operator: >=*, *Limit: 2*, *Unit: g*, *Basis: Per Printed Serving*.
+   - Click **+ Add Threshold** and **Save All Changes**.
+4. Live Alert Verification on Scanned Product:
+   - Notice the **Live Scan Verification** section in the Caregiver portal automatically evaluates the currently scanned label against Maya's thresholds!
+   - If sugar exceeds 12g, a prominent alert appears with exact extracted grams and configured limit.
+5. Incompatible Unit Safety:
+   - If a threshold is entered with incompatible units (e.g. calories vs milligrams) or missing serving basis, it safely flags `UNCERTAIN` instead of producing a corrupted calculation.
+
+---
+
+## 3. Mission 3 & Caregiver Requirement Verification Matrix
+
+| Requirement | Code Implementation | Test File / Scenarios | UI Location |
 | :--- | :--- | :--- | :--- |
-| **1. Image Quality Detection** | `src/lib/ocr/quality.ts` | `reliability.test.ts` (Cases B, C) | `/scanner` Quality HUD |
-| **2. Completeness & Uncertainty** | `src/lib/extract/extractionEngine.ts` | `reliability.test.ts` (Cases A, D, E, H) | `/analysis` Integrity Deck |
-| **3. Clear-Image & Confirmation** | `src/components/analysis/ExtractionIntegrityDeck.tsx` | `reliability.test.ts` (Case N) | Integrity Deck Modal |
-| **4. Editable Extraction Workflow** | `src/stores/useGuardianStore.ts` | `reliability.test.ts` (Cases I, J, O) | Inline Field Editor |
-| **5. Fail-Safe Dietary Rules** | `src/lib/dietary/rules.ts` | `reliability.test.ts` (Cases F, G, L, M) | Analysis Warning Banner |
-| **6. Evidence-Based Interface** | `src/components/analysis/EvidenceCard.tsx` | `reliability.test.ts` (Case A, J) | `/analysis` Evidence View |
-| **7. 15 Automated Test Cases** | `src/lib/ocr/reliability.test.ts` | All Cases (A through O) | Vitest CLI |
-| **8. Documentation & Audit** | `OCR_RELIABILITY.md`, `TESTING_GUIDE.md` | Full repository inspection | Root Directory |
+| **Req 1: Evidence-Grounded Comparisons** | `src/lib/dietary/comparisonEngine.ts` | `comparisonEngine.test.ts` (Scenarios 1, 2) | `/analysis` Alerts Deck |
+| **Req 2: Exact Extracted Evidence** | `src/components/analysis/EvidenceGroundedAlerts.tsx` | `comparisonEngine.test.ts` (Scenarios 1, 11) | Exact Evidence Card Block |
+| **Req 3: Traceable Evidence Links** | `src/app/analysis/page.tsx` (`handleNavigateToEvidence`) | `comparisonEngine.test.ts` (Scenarios 12, 13) | `🔍 View Label Evidence` |
+| **Req 4: Contradiction Detection** | `src/lib/dietary/comparisonEngine.ts` | `comparisonEngine.test.ts` (Scenarios 3, 4, 8) | Status: `UNRESOLVED_CONTRADICTION` |
+| **Req 5: User Confirmation Flow** | `src/components/analysis/EvidenceGroundedAlerts.tsx` | `comparisonEngine.test.ts` (Scenarios 5, 14) | `⚠️ Review & Resolve` Modal |
+| **Req 6: Explicit Result Statuses** | `src/types/comparison.ts` | `comparisonEngine.test.ts` (Scenarios 1–8) | Distinct Color/Icon Badges |
+| **Req 7: Fail-Safe Guardrails** | `src/lib/dietary/comparisonEngine.ts` | `comparisonEngine.test.ts` (Scenarios 6, 7, 15) | Invariance Warning Banners |
+| **Req 8: 15 Automated Test Scenarios** | `src/lib/dietary/comparisonEngine.test.ts` | All 15 Scenarios Passing | Vitest CLI |
+| **Req 9: Documentation & Auditing** | `OCR_RELIABILITY.md`, `TESTING_GUIDE.md` | Full repository review | Project Root |
+| **Caregiver Req 1: Portal & Plan** | `src/app/caregiver/page.tsx` | `caregiver.test.ts` (Cases 1, 2, 3) | `/caregiver` Profile Manager |
+| **Caregiver Req 2: Nutrition Thresholds** | `src/lib/dietary/comparisonEngine.ts` | `caregiver.test.ts` (Cases 5, 6, 7, 9) | Thresholds Table & Form |
+| **Caregiver Req 3: Persistence & Ownership** | `src/lib/storage/local.ts` | `caregiver.test.ts` (Cases 1, 2, 3) | `llg.caregiverProfiles` |
+| **Caregiver Req 4: Automatic Scan Alerts** | `src/stores/useGuardianStore.ts` | `caregiver.test.ts` (Cases 4, 5, 8, 10) | Live Product Verification |
+| **Caregiver Req 5: Evidence-Linked Alerts** | `src/components/analysis/EvidenceGroundedAlerts.tsx` | `caregiver.test.ts` (Case 11) | Exact Units & Values |
+| **Caregiver Req 9: 15 Caregiver Tests** | `src/lib/caregiver/caregiver.test.ts` | All 15 Cases Passing | Vitest CLI |
+

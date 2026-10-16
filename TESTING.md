@@ -1,22 +1,21 @@
-# Testing guide
+# Testing Guide & Automated Verification
 
-## Automated
+## Automated Test Suites
 
 ```bash
 npm test
-npx playwright install chromium
-npm run test:e2e
 ```
 
-### Unit coverage
+**Results:** `13 passed (13 test files), 69 passed (69 tests)`
 
-- Serving-size scaling, zero/invalid units, missing nutrients
-- Vegan UNKNOWN for glycerin / D3 / stearates; NON-VEGAN for gelatin
-- OCR text extraction without invented bounding boxes
-- Label radar honey addition on demo v2
-- Nutrition compare does not coerce missing to zero
-- Search / dietary preference rules
-- Grounded chatbot citations
+### Key Test Suites:
+
+- **Mission 3 Evidence-Grounded Comparisons (`src/lib/dietary/comparisonEngine.test.ts`)**: 15 test scenarios verifying matching evidence conflicts, non-conflict certification safeguards, model contradiction detection, negative nutrition contradictions, ambiguous ingredient confirmation flows, and dynamic preference recalculation.
+- **Caregiver Settings, Thresholds & Alerts (`src/lib/caregiver/caregiver.test.ts`)**: 15 test scenarios verifying dependent profile creation, persistence, user isolation, threshold checks, unit compatibility validation, personalized alerts, and safe fallbacks.
+- **OCR Reliability Mission (`src/lib/ocr/reliability.test.ts`)**: 15 test scenarios (Cases A through O) covering optical quality assessment (blur, low resolution, glare, crop), structured extraction, honest null confidence, fail-safe invariance, and user corrections.
+- **Nutrition Serving Scaling (`src/lib/nutrition/serving.test.ts`)**: 4 tests on unit conversions, scale factor calculations, and missing nutrient handling.
+- **Vegan Classification & Catalogs (`src/lib/vegan/classify.test.ts`)**: 5 tests on three-state vegan origin categorization (`VEGAN`, `NON-VEGAN`, `UNKNOWN`).
+- **Grounded Chatbot & Label Radar (`src/lib/chat/grounded.test.ts`, `src/lib/radar/labelDiff.test.ts`)**: Grounded citation verification and label version differential tracking.
 
 ### Playwright journeys A–L
 
