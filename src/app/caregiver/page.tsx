@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useGuardianStore } from "@/stores/useGuardianStore";
 import { Button, Field, Panel, inputClass, Badge } from "@/components/ui/Hud";
@@ -10,10 +11,14 @@ import type { NutritionThreshold, CaregiverProfile } from "@/types/comparison";
 import { EvidenceGroundedAlerts } from "@/components/analysis/EvidenceGroundedAlerts";
 import { useRouter } from "next/navigation";
 
-const LabCanvas = dynamic(() => import("@/components/three/LabCanvas").then((m) => m.LabCanvas), { ssr: false });
+const LabCanvas = dynamic(
+  () => import("@/components/three/LabCanvas").then((m) => m.LabCanvas),
+  { ssr: false }
+);
 
 export default function CaregiverPage() {
   const router = useRouter();
+
   const user = useGuardianStore((s) => s.user);
   const caregiver = useGuardianStore((s) => s.caregiver);
   const optIn = useGuardianStore((s) => s.caregiverOptIn);
@@ -22,49 +27,89 @@ export default function CaregiverPage() {
   const triggerAlert = useGuardianStore((s) => s.triggerAlert);
   const deleteAlert = useGuardianStore((s) => s.deleteAlert);
   const alerts = useGuardianStore((s) => s.alerts);
-  const product = useGuardianStore((s) => s.activeProduct());
-  const activeComparisons = useGuardianStore((s) => s.activeComparisons());
+
+  // Subscribe to the stable store state, then derive computed values.
+  const storeState = useGuardianStore((s) => s);
+  const product = useMemo(
+    () => storeState.activeProduct(),
+    [storeState]
+  );
+  const activeComparisons = useMemo(
+    () => storeState.activeComparisons(),
+    [storeState]
+  );
+
   const resolveConfirmation = useGuardianStore((s) => s.resolveConfirmation);
   const dismissAlert = useGuardianStore((s) => s.dismissAlert);
   const caregiverProfile = useGuardianStore((s) => s.caregiverProfile);
   const saveCaregiverProfile = useGuardianStore((s) => s.saveCaregiverProfile);
 
-  // Contact form state
   const [contactName, setContactName] = useState(caregiver?.name ?? "");
   const [address, setAddress] = useState(caregiver?.address ?? "");
 
-  // Dietary Plan state
-  const [dependentName, setDependentName] = useState(caregiverProfile?.dependentName ?? "Primary Dependent");
-  const [isVegan, setIsVegan] = useState(caregiverProfile?.dietaryPlan.vegan ?? false);
-  const [isVegetarian, setIsVegetarian] = useState(caregiverProfile?.dietaryPlan.vegetarian ?? false);
+  const [dependentName, setDependentName] = useState(
+    caregiverProfile?.dependentName ?? "Primary Dependent"
+  );
+  const [isVegan, setIsVegan] = useState(
+    caregiverProfile?.dietaryPlan.vegan ?? false
+  );
+  const [isVegetarian, setIsVegetarian] = useState(
+    caregiverProfile?.dietaryPlan.vegetarian ?? false
+  );
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>(
-    caregiverProfile?.dietaryPlan.allergies ?? ["milk", "peanuts", "eggs"],
+    caregiverProfile?.dietaryPlan.allergies ?? ["milk", "peanuts", "eggs"]
   );
   const [avoidInput, setAvoidInput] = useState(
-    caregiverProfile?.dietaryPlan.ingredientsToAvoid.join(", ") ?? "added sugar, hydrogenated oil",
+    caregiverProfile?.dietaryPlan.ingredientsToAvoid.join(", ") ??
+      "added sugar, hydrogenated oil"
   );
 
-  // Thresholds state
   const [thresholds, setThresholds] = useState<NutritionThreshold[]>(
     caregiverProfile?.thresholds ?? [
-      { id: "th-1", nutrient: "Total Sugars", operator: ">=", limit: 12, unit: "g", basis: "per_serving", enabled: true },
-      { id: "th-2", nutrient: "Sodium", operator: ">=", limit: 400, unit: "mg", basis: "per_serving", enabled: true },
-      { id: "th-3", nutrient: "Saturated Fat", operator: ">=", limit: 3, unit: "g", basis: "per_serving", enabled: true },
-    ],
+      {
+        id: "th-1",
+        nutrient: "Total Sugars",
+        operator: ">=",
+        limit: 12,
+        unit: "g",
+        basis: "per_serving",
+        enabled: true,
+      },
+      {
+        id: "th-2",
+        nutrient: "Sodium",
+        operator: ">=",
+        limit: 400,
+        unit: "mg",
+        basis: "per_serving",
+        enabled: true,
+      },
+      {
+        id: "th-3",
+        nutrient: "Saturated Fat",
+        operator: ">=",
+        limit: 3,
+        unit: "g",
+        basis: "per_serving",
+        enabled: true,
+      },
+    ]
   );
 
-  // New threshold form
   const [newNutrient, setNewNutrient] = useState("Calories");
   const [newOperator, setNewOperator] = useState<">=" | "<=" | ">" | "<">(">=");
   const [newLimit, setNewLimit] = useState(250);
   const [newUnit, setNewUnit] = useState("kcal");
-  const [newBasis, setNewBasis] = useState<"per_serving" | "per_100g">("per_serving");
+  const [newBasis, setNewBasis] =
+    useState<"per_serving" | "per_100g">("per_serving");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   const handleToggleAllergen = (allergen: string) => {
     setSelectedAllergies((prev) =>
-      prev.includes(allergen) ? prev.filter((a) => a !== allergen) : [...prev, allergen],
+      prev.includes(allergen)
+        ? prev.filter((a) => a !== allergen)
+        : [...prev, allergen]
     );
   };
 
@@ -73,8 +118,8 @@ export default function CaregiverPage() {
       setValidationError("Nutrient name is required.");
       return;
     }
-    if (isNaN(newLimit) || newLimit < 0) {
-      setValidationError("Threshold limit must be a positive number.");
+    if (!Number.isFinite(newLimit) || newLimit < 0) {
+      setValidationError("Threshold limit must be a non-negative number.");
       return;
     }
     if (!newUnit.trim()) {
@@ -98,7 +143,7 @@ export default function CaregiverPage() {
 
   const handleToggleThreshold = (id: string) => {
     setThresholds((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t)),
+      prev.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t))
     );
   };
 
@@ -108,6 +153,7 @@ export default function CaregiverPage() {
 
   const handleSaveProfile = () => {
     if (!user) return;
+
     const updated: CaregiverProfile = {
       userId: user.id,
       dependentName: dependentName.trim() || "Dependent",
@@ -156,12 +202,15 @@ export default function CaregiverPage() {
         </div>
       )}
 
-      {/* 3D Pulse Visualizer */}
       <LabCanvas className="h-[180px]" autoRotate={false}>
-        <TransmissionPulse active={alerts.length > 0 || activeComparisons.some((c) => c.severity === "alert")} />
+        <TransmissionPulse
+          active={
+            alerts.length > 0 ||
+            activeComparisons.some((c) => c.severity === "alert")
+          }
+        />
       </LabCanvas>
 
-      {/* Section 1: Dependent Dietary Profile & Avoidances */}
       <Panel kicker="Profile Management" title="Dependent Dietary Plan & Allergens">
         <div className="space-y-4">
           <Field label="Dependent Name / Identifier">
@@ -242,7 +291,6 @@ export default function CaregiverPage() {
         </div>
       </Panel>
 
-      {/* Section 2: Nutrition Thresholds Configuration */}
       <Panel kicker="Thresholds" title="Numeric Nutrition Limits">
         <p className="mb-4 text-xs text-slate-400">
           Set maximum or minimum limits for nutrients. Incompatible units or missing serving bases are safely flagged as
@@ -296,7 +344,6 @@ export default function CaregiverPage() {
           )}
         </div>
 
-        {/* Add new threshold form */}
         <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
           <span className="hud-label block">Add New Threshold</span>
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
@@ -357,27 +404,16 @@ export default function CaregiverPage() {
             </Field>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleAddThreshold}
-              data-testid="add-threshold-btn"
-            >
+            <Button variant="primary" size="sm" onClick={handleAddThreshold} data-testid="add-threshold-btn">
               + Add Threshold
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSaveProfile}
-              data-testid="save-all-thresholds"
-            >
+            <Button variant="ghost" size="sm" onClick={handleSaveProfile} data-testid="save-all-thresholds">
               Save All Changes
             </Button>
           </div>
         </div>
       </Panel>
 
-      {/* Section 3: Live Alerts on Current Active Product */}
       <Panel kicker="Live Scan Verification" title={`Personalized Alerts for: ${product?.name ?? "No Scanned Product"}`}>
         {product ? (
           <div className="space-y-3">
@@ -398,7 +434,6 @@ export default function CaregiverPage() {
         )}
       </Panel>
 
-      {/* Section 4: Notification Simulation Settings */}
       <Panel kicker="Simulation Mode" title="Caregiver Delivery Settings (Demo)">
         <label className="text-sm flex items-center gap-2 cursor-pointer mb-3">
           <input
@@ -413,28 +448,15 @@ export default function CaregiverPage() {
 
         <div className="grid sm:grid-cols-2 gap-3 mb-3">
           <Field label="Caregiver Contact Name">
-            <input
-              className={inputClass}
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              placeholder="e.g. Dr. Jordan"
-            />
+            <input className={inputClass} value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. Dr. Jordan" />
           </Field>
           <Field label="Emergency Email / SMS (Simulation Only)">
-            <input
-              className={inputClass}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. caregiver@example.com"
-            />
+            <input className={inputClass} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. caregiver@example.com" />
           </Field>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            onClick={() => setCaregiver({ name: contactName, address, channel: "email" })}
-          >
+          <Button size="sm" onClick={() => setCaregiver({ name: contactName, address, channel: "email" })}>
             Save Contact
           </Button>
           <Button
@@ -448,7 +470,6 @@ export default function CaregiverPage() {
         </div>
       </Panel>
 
-      {/* Section 5: Simulated Notification History */}
       <Panel kicker="Audit Trail" title="Simulated Alert Log">
         <ul className="space-y-2" data-testid="alert-list">
           {alerts.map((a) => (

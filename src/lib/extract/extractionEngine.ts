@@ -27,7 +27,7 @@ export function checkIngredientTruncation(rawText: string): {
   if (/,\s*$/.test(trimmed)) {
     return { isTruncated: true, reason: "Text terminates abruptly with a trailing comma." };
   }
-  if (/\.{3}$|…$/.test(trimmed)) {
+  if (/\.{2,}$|…$/.test(trimmed)) {
     return { isTruncated: true, reason: "Text terminates with an ellipsis (...)." };
   }
   if (/(?:contains|less than)\s*2%\s*or\s*less\s*(?:of)?[:\s]*$/i.test(trimmed)) {
@@ -272,10 +272,10 @@ export function buildStructuredExtractionRecord(params: {
     hasName,
     Boolean(rawIngredientsText),
     !truncation.isTruncated,
-    Boolean(allergenStatement),
+    Boolean(allergenStatement) || ingredients.length > 0,
     !nutrition.incomplete,
     Boolean(servingSize.amount),
-    (confidence ?? 70) > 60,
+    (confidence ?? 70) >= 50,
   ]);
 
   return {

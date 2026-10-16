@@ -7,7 +7,8 @@ import { FAIL_TOKEN, runOcrPipeline } from "@/lib/ocr/client";
 import { buildSimulatedAlert, canSimulateAlert } from "@/lib/notifications/simulate";
 import { isBusyPhase } from "@/lib/scan/machine";
 import { DEMO_LABEL_DATA_URL, DEMO_LABEL_FILENAME } from "@/lib/ocr/fixture";
-import { localDb, hashPassword, demoAccounts, saveDemoAccounts } from "@/lib/storage/local";
+import { localDb, hashPassword, demoAccounts, saveDemoAccounts, onQuotaWarning, migrateLegacyScans } from "@/lib/storage/local";
+import { saveScanImage, getScanImage, deleteScanImage, clearAllScanImages } from "@/lib/storage/imageStore";
 import { answerAboutProduct } from "@/lib/chat/grounded";
 import { authMode } from "@/lib/auth/config";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
@@ -102,6 +103,9 @@ interface GuardianState {
   simulateDemoOcr: () => Promise<boolean>;
   activeProduct: () => ProductRecord | null;
   catalog: () => ProductRecord[];
+  storageWarning: string | null;
+  dismissStorageWarning: () => void;
+  loadScanImage: (scanId: string) => Promise<string | null>;
 }
 
 function persist(userId: string, scans: ScanRecord[], prefs: DietaryPreferences, chat: ChatMessage[]) {
@@ -139,7 +143,33 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
   caregiverProfile: null,
   highlightedEvidenceId: null,
   forceFailNext: false,
+  storageWarning: null,
+  dismissStorageWarning: () => set({ storageWarning: null }),
+  loadScanImage: async (scanId: string) => {
+    const scan = get().scans.find((s) => s.id === scanId);
+    if (scan?.product?.imageDataUrl) return scan.product.imageDataUrl;
+    const img = await getScanImage(scanId);
+    if (img) {
+      set({
+        scans: get().scans.map((s) =>
+          s.id === scanId ? { ...s, product: { ...s.product, imageDataUrl: img } } : s,
+        ),
+      });
+      return img;
+    }
+    return null;
+  },
   hydrate: () => {
+    // 1. Subscribe to quota warnings
+    onQuotaWarning((warning) => {
+      set({ storageWarning: warning.message });
+    });
+
+    // 2. Run legacy scan migration in background
+    migrateLegacyScans().catch((e) => {
+      console.warn("[Store] Legacy scan migration skipped:", e);
+    });
+
     const user = localDb.getUser();
     if (!user) {
       set({ hydrated: true });
@@ -369,6 +399,12 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
       // 2. Run OCR pipeline
       const ocr = await runOcrPipeline(dataUrl, { forceFail: forceFailNext, fileName });
 
+      // Save high-resolution image to IndexedDB
+      const scanId = uid("scan");
+      await saveScanImage(scanId, dataUrl).catch((err) => {
+        console.warn("[Store] ImageStore write fallback:", err);
+      });
+
       // 3. Extract and construct structured product record with uncertainty tracking
       const product = buildProductFromOcr({
         ocrText: ocr.text || "Unreadable label",
@@ -376,6 +412,7 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
         imageDataUrl: dataUrl,
         qualityReport,
       });
+      product.imageRef = scanId;
 
       if (!ocr.text.trim()) {
         product.missingInformation.push("OCR returned empty text.");
@@ -387,7 +424,7 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
         product.uncertainties.push("This scan used the built-in demonstration OCR fixture.");
       }
       const scan: ScanRecord = {
-        id: uid("scan"),
+        id: scanId,
         userId: user.id,
         product,
         phase: "reviewing",
@@ -498,11 +535,13 @@ export const useGuardianStore = create<GuardianState>((set, get) => ({
     const scans = get().scans.filter((s) => s.id !== scanId);
     set({ scans, activeScanId: activeScanId === scanId ? scans[0]?.id ?? null : activeScanId });
     if (user) persist(user.id, scans, get().prefs, get().chat);
+    deleteScanImage(scanId).catch(() => {});
   },
   clearHistory: () => {
     const { user } = get();
     set({ scans: [], activeScanId: null });
     if (user) persist(user.id, [], get().prefs, get().chat);
+    clearAllScanImages().catch(() => {});
   },
   setCompare: (slot, id) => set(slot === "left" ? { compareLeft: id } : { compareRight: id }),
   setRadar: (slot, id) => set(slot === "left" ? { radarLeft: id } : { radarRight: id }),

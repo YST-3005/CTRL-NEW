@@ -87,6 +87,7 @@ export interface ProductRecord {
   missingInformation: string[];
   uncertainties: string[];
   imageDataUrl?: string;
+  imageRef?: string;
   thumbnail?: string;
   extractedText?: string;
   extractionConfidence?: number;

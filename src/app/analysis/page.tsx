@@ -8,9 +8,11 @@ import { scaleNutrition } from "@/lib/nutrition/serving";
 import { Badge, Button, Field, Panel, inputClass } from "@/components/ui/Hud";
 import { formatNumber } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { PortionDial } from "@/components/three/LabCanvas";
 import { VolumetricServingChamber } from "@/components/three/models/VolumetricServingChamber";
-import { ExplodedIngredientField, type ExplodedIngredientItem } from "@/components/three/models/ExplodedIngredientField";
+import {
+  ExplodedIngredientField,
+  type ExplodedIngredientItem,
+} from "@/components/three/models/ExplodedIngredientField";
 import { CinematicProduct } from "@/components/three/models/CinematicProduct";
 import { ExtractionIntegrityDeck } from "@/components/analysis/ExtractionIntegrityDeck";
 import { ImageQualityHud } from "@/components/scanner/ImageQualityHud";
@@ -18,47 +20,93 @@ import { EvidenceGroundedAlerts } from "@/components/analysis/EvidenceGroundedAl
 
 const MotionLi = motion.li as any;
 
-const LabCanvas = dynamic(() => import("@/components/three/LabCanvas").then((m) => m.LabCanvas), { ssr: false });
+const LabCanvas = dynamic(
+  () =>
+    import("@/components/three/LabCanvas").then((m) => m.LabCanvas),
+  { ssr: false }
+);
 
 export default function AnalysisPage() {
-  const product = useGuardianStore((s) => s.activeProduct());
-  const prefs = useGuardianStore((s) => s.prefs);
-  const selected = useGuardianStore((s) => s.selectedIngredientId);
-  const selectIngredient = useGuardianStore((s) => s.selectIngredient);
-  const updateFieldCorrection = useGuardianStore((s) => s.updateFieldCorrection);
-  const confirmField = useGuardianStore((s) => s.confirmField);
-  const startUpload = useGuardianStore((s) => s.startUpload);
-  const activeQualityReport = useGuardianStore((s) => s.activeQualityReport);
-  const phase = useGuardianStore((s) => s.phase);
-  const activeComparisons = useGuardianStore((s) => s.activeComparisons());
-  const resolveConfirmation = useGuardianStore((s) => s.resolveConfirmation);
-  const dismissAlert = useGuardianStore((s) => s.dismissAlert);
-  const findings = product ? evaluateDietaryRules(product, prefs) : [];
-  const [amount, setAmount] = useState<number>(product?.nutrition.servingSizeAmount ?? 55);
-  const [unit, setUnit] = useState(product?.nutrition.servingSizeUnit ?? "g");
+  /*
+   * FIX:
+   * Subscribe to the stable Zustand state snapshot instead of invoking
+   * computed methods inside selectors.
+   *
+   * Calling activeProduct() or activeComparisons() inside a selector can
+   * produce a new object/array on every snapshot read and cause the
+   * "getSnapshot should be cached" error.
+   *
+   * This approach assumes these methods are available on the store state
+   * and read the latest state when called.
+   */
+  const storeState = useGuardianStore();
+
+  const product = storeState.activeProduct();
+  const prefs = storeState.prefs;
+  const selected = storeState.selectedIngredientId;
+  const selectIngredient = storeState.selectIngredient;
+  const updateFieldCorrection = storeState.updateFieldCorrection;
+  const confirmField = storeState.confirmField;
+  const startUpload = storeState.startUpload;
+  const activeQualityReport = storeState.activeQualityReport;
+  const phase = storeState.phase;
+  const activeComparisons = storeState.activeComparisons();
+  const resolveConfirmation = storeState.resolveConfirmation;
+  const dismissAlert = storeState.dismissAlert;
+
+  const findings = useMemo(
+    () => (product ? evaluateDietaryRules(product, prefs) : []),
+    [product, prefs]
+  );
+
+  const [amount, setAmount] = useState<number>(
+    product?.nutrition.servingSizeAmount ?? 55
+  );
+  const [unit, setUnit] = useState(
+    product?.nutrition.servingSizeUnit ?? "g"
+  );
+  const [viewMode, setViewMode] = useState<"3d" | "list">("3d");
 
   const handleNavigateToEvidence = (ref: string) => {
-    if (ref.startsWith("ing") || ref.includes("ing") || ref.includes("ingredient")) {
-      const match = product?.ingredients.find((i) => i.id === ref || ref.includes(i.id));
-      if (match) selectIngredient(match.id);
-      setViewMode("list");
-      setTimeout(() => {
-        const el = document.getElementById(`ingredient-item-${ref}`);
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
+    if (
+      ref.startsWith("ing") ||
+      ref.includes("ing") ||
+      ref.includes("ingredient")
+    ) {
+      const match = product?.ingredients.find(
+        (i) => i.id === ref || ref.includes(i.id)
+      );
+
+      if (match) {
+        selectIngredient(match.id);
+        setViewMode("list");
+
+        setTimeout(() => {
+          const el = document.getElementById(
+            `ingredient-item-${match.id}`
+          );
+          el?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 100);
+      }
     } else if (ref.includes("nutrition")) {
-      const el = document.getElementById("panel-nutrition-facts");
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById("panel-nutrition-facts")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     } else if (ref.includes("allergen")) {
-      const el = document.getElementById("panel-allergens-section");
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById("panel-allergens-section")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
 
   useEffect(() => {
     if (!product) return;
+
     setAmount(product.nutrition.servingSizeAmount ?? 55);
-    setUnit(product.nutrition.servingSizeUnit);
+    setUnit(product.nutrition.servingSizeUnit ?? "g");
   }, [product]);
 
   const scaled = useMemo(() => {
@@ -66,18 +114,22 @@ export default function AnalysisPage() {
     return scaleNutrition(product.nutrition, amount, unit);
   }, [product, amount, unit]);
 
-  // Keep every hook above the conditional return so hook order stays stable.
-  const [viewMode, setViewMode] = useState<"3d" | "list">("3d");
-
   const ingredientNodes: ExplodedIngredientItem[] = useMemo(() => {
     if (!product) return [];
+
     return product.ingredients.map((ing) => {
       let category: "safe" | "concern" | "uncertain" = "safe";
-      if (ing.allergenTags.length > 0 || ing.concernTags.length > 0 || ing.veganStatus === "NON-VEGAN") {
+
+      if (
+        ing.allergenTags.length > 0 ||
+        ing.concernTags.length > 0 ||
+        ing.veganStatus === "NON-VEGAN"
+      ) {
         category = "concern";
       } else if (ing.veganStatus === "UNKNOWN") {
         category = "uncertain";
       }
+
       return {
         id: ing.id,
         name: ing.name,
@@ -91,12 +143,16 @@ export default function AnalysisPage() {
   if (!product) {
     return (
       <Panel title="No scan in chamber">
-        <p className="text-slate-300">Load a sample or upload a label from the scanner.</p>
+        <p className="text-slate-300">
+          Load a sample or upload a label from the scanner.
+        </p>
       </Panel>
     );
   }
 
-  const selectedIng = product.ingredients.find((i) => i.id === selected);
+  const selectedIng = product.ingredients.find(
+    (i) => i.id === selected
+  );
 
   return (
     <div className="space-y-6">
@@ -105,45 +161,59 @@ export default function AnalysisPage() {
           <p className="hud-label">Analysis · {phase}</p>
           <h1 className="display text-3xl">{product.name}</h1>
           <p className="text-sm text-slate-400">
-            {product.brand} · {product.dataOrigin} · completeness {product.completeness}%
+            {product.brand} · {product.dataOrigin} · completeness{" "}
+            {product.completeness}%
           </p>
         </div>
-        <Badge tone={product.dietary.veganStatus === "NON-VEGAN" ? "alert" : product.dietary.veganStatus === "VEGAN" ? "ok" : "amber"}>
+
+        <Badge
+          tone={
+            product.dietary.veganStatus === "NON-VEGAN"
+              ? "alert"
+              : product.dietary.veganStatus === "VEGAN"
+                ? "ok"
+                : "amber"
+          }
+        >
           {product.dietary.veganStatus}
         </Badge>
       </header>
+
       <p className="text-xs text-amber-200">{product.dataSource}</p>
+
       {product.medicineDisclaimer && (
-        <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm">{product.medicineDisclaimer}</p>
+        <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm">
+          {product.medicineDisclaimer}
+        </p>
       )}
 
-      
-{/* Fail-Safe Safety Warnings (Mandatory Requirement 5) */}
-{findings.filter((f) => f.rule.startsWith("safety.")).length > 0 && (
-  <div className="space-y-2">
-    {findings
-      .filter((f) => f.rule.startsWith("safety."))
-      .map((f, index) => (
-        <div
-          key={`${f.id}-${f.rule}-${index}`}
-          className={`rounded-2xl border p-4 backdrop-blur-md ${
-            f.severity === "alert"
-              ? "border-red-500/40 bg-red-500/10"
-              : "border-amber-500/40 bg-amber-500/10"
-          }`}
-        >
-          {/* Keep your existing warning content here */}
+      {/* Fail-safe safety warnings */}
+      {findings.filter((f) => f.rule.startsWith("safety.")).length > 0 && (
+        <div className="space-y-2">
+          {findings
+            .filter((f) => f.rule.startsWith("safety."))
+            .map((f, index) => (
+              <div
+                key={`${f.id}-${f.rule}-${index}`}
+                className={`rounded-2xl border p-4 backdrop-blur-md ${
+                  f.severity === "alert"
+                    ? "border-red-500/40 bg-red-500/10"
+                    : "border-amber-500/40 bg-amber-500/10"
+                }`}
+              >
+                <p className="font-semibold">{f.rule}</p>
+                <p className="mt-1 text-sm text-slate-300">
+                  {f.detail}
+                </p>
+              </div>
+            ))}
         </div>
-      ))}
-  </div>
-)}
+      )}
 
-      {/* Optical Quality Diagnostics Card if available */}
       {activeQualityReport && (
         <ImageQualityHud report={activeQualityReport} compact />
       )}
 
-      {/* OCR Field Integrity & User Correction Deck (Requirements 2, 3, 4) */}
       <ExtractionIntegrityDeck
         product={product}
         onUpdateField={updateFieldCorrection}
@@ -160,25 +230,27 @@ export default function AnalysisPage() {
           title={
             <div className="flex items-center justify-between">
               <span>Holographic matrix</span>
+
               <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => setViewMode("3d")}
-                  className={`rounded-lg px-2.5 py-0.5 text-xs font-mono transition-all ${
+                  className={`rounded-lg border px-2.5 py-0.5 text-xs font-mono transition-all ${
                     viewMode === "3d"
-                      ? "bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_10px_rgba(60,239,255,0.2)]"
-                      : "text-slate-400 hover:text-white border border-transparent"
+                      ? "border-cyan-400/40 bg-cyan-400/20 text-cyan-300 shadow-[0_0_10px_rgba(60,239,255,0.2)]"
+                      : "border-transparent text-slate-400 hover:text-white"
                   }`}
                 >
                   3D Matrix
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setViewMode("list")}
-                  className={`rounded-lg px-2.5 py-0.5 text-xs font-mono transition-all ${
+                  className={`rounded-lg border px-2.5 py-0.5 text-xs font-mono transition-all ${
                     viewMode === "list"
-                      ? "bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_10px_rgba(60,239,255,0.2)]"
-                      : "text-slate-400 hover:text-white border border-transparent"
+                      ? "border-cyan-400/40 bg-cyan-400/20 text-cyan-300 shadow-[0_0_10px_rgba(60,239,255,0.2)]"
+                      : "border-transparent text-slate-400 hover:text-white"
                   }`}
                 >
                   List
@@ -198,6 +270,7 @@ export default function AnalysisPage() {
                   brandText={product.brand}
                   customTextureUrl={product.imageDataUrl ?? undefined}
                 />
+
                 <ExplodedIngredientField
                   mode="understand"
                   ingredients={ingredientNodes}
@@ -205,12 +278,13 @@ export default function AnalysisPage() {
                   onSelectIngredient={selectIngredient}
                 />
               </LabCanvas>
-              <p className="text-[11px] text-slate-400 text-center font-mono">
-                Click any 3D node above to inspect verified evidence & classification.
+
+              <p className="text-center text-[11px] font-mono text-slate-400">
+                Click any 3D node above to inspect evidence and classification.
               </p>
             </div>
           ) : (
-            <ul className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+            <ul className="max-h-[300px] space-y-2 overflow-y-auto pr-1">
               {product.ingredients.map((ing, idx) => (
                 <MotionLi
                   key={ing.id}
@@ -220,6 +294,7 @@ export default function AnalysisPage() {
                 >
                   <button
                     id={`ingredient-item-${ing.id}`}
+                    type="button"
                     className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition-all ${
                       selected === ing.id
                         ? "border-cyan-300 bg-cyan-400/15 shadow-[0_0_12px_rgba(60,239,255,0.2)]"
@@ -227,10 +302,24 @@ export default function AnalysisPage() {
                     }`}
                     onClick={() => selectIngredient(ing.id)}
                   >
-                    <span className={selected === ing.id ? "text-cyan-200 font-bold" : ""}>{ing.originalText}</span>
-                    <span className="ml-2 text-xs text-slate-400">{ing.veganStatus}</span>
+                    <span
+                      className={
+                        selected === ing.id
+                          ? "font-bold text-cyan-200"
+                          : ""
+                      }
+                    >
+                      {ing.originalText}
+                    </span>
+
+                    <span className="ml-2 text-xs text-slate-400">
+                      {ing.veganStatus}
+                    </span>
+
                     {ing.allergenTags.length > 0 && (
-                      <span className="ml-2 text-xs text-rose-300 font-mono">allergen</span>
+                      <span className="ml-2 font-mono text-xs text-rose-300">
+                        allergen
+                      </span>
                     )}
                   </button>
                 </MotionLi>
@@ -238,51 +327,90 @@ export default function AnalysisPage() {
             </ul>
           )}
         </Panel>
-        <Panel kicker="Evidence" title={selectedIng ? selectedIng.name : "Select an ingredient"}>
+
+        <Panel
+          kicker="Evidence"
+          title={selectedIng ? selectedIng.name : "Select an ingredient"}
+        >
           {selectedIng ? (
             <div className="space-y-2 text-sm text-slate-300">
               <p>{selectedIng.classificationReason}</p>
               <p>Origin: {selectedIng.originNote}</p>
               <p>Evidence quality: {selectedIng.evidenceQuality}</p>
+
               {selectedIng.evidence.map((ev) => (
-                <blockquote key={ev.id} className="border-l-2 border-cyan-400/40 pl-3">
+                <blockquote
+                  key={ev.id}
+                  className="border-l-2 border-cyan-400/40 pl-3"
+                >
                   <span className="hud-label">{ev.kind}</span>
                   <p>{ev.sourceText || ev.claim}</p>
                 </blockquote>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">Click an ingredient to inspect source text and classification.</p>
+            <p className="text-sm text-slate-400">
+              Click an ingredient to inspect source text and classification.
+            </p>
           )}
+
           {product.imageDataUrl && (
             <div className="relative mt-4 max-h-48 overflow-hidden rounded-xl border border-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={product.imageDataUrl} alt="Source label capture" className="max-h-48 w-full object-contain" />
+              <img
+                src={product.imageDataUrl}
+                alt="Source label capture"
+                className="max-h-48 w-full object-contain"
+              />
+
               {selectedIng?.evidence[0]?.boundingBox && (
                 <span
                   className="pointer-events-none absolute border border-cyan-300"
                   style={{
-                    left: `${selectedIng.evidence[0].boundingBox.x * 100}%`,
-                    top: `${selectedIng.evidence[0].boundingBox.y * 100}%`,
-                    width: `${selectedIng.evidence[0].boundingBox.width * 100}%`,
-                    height: `${selectedIng.evidence[0].boundingBox.height * 100}%`,
+                    left: `${
+                      selectedIng.evidence[0].boundingBox.x * 100
+                    }%`,
+                    top: `${
+                      selectedIng.evidence[0].boundingBox.y * 100
+                    }%`,
+                    width: `${
+                      selectedIng.evidence[0].boundingBox.width * 100
+                    }%`,
+                    height: `${
+                      selectedIng.evidence[0].boundingBox.height * 100
+                    }%`,
                   }}
                 />
               )}
             </div>
           )}
+
           {product.extractedText && (
             <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap text-xs text-slate-400">
               {selectedIng
-                ? product.extractedText.split(new RegExp(`(${selectedIng.originalText})`, "i")).map((chunk, i) =>
-                    chunk.toLowerCase() === selectedIng.originalText.toLowerCase() ? (
-                      <mark key={i} className="bg-cyan-400/30 text-cyan-50">
-                        {chunk}
-                      </mark>
-                    ) : (
-                      <span key={i}>{chunk}</span>
-                    ),
-                  )
+                ? product.extractedText
+                    .split(
+                      new RegExp(
+                        `(${selectedIng.originalText.replace(
+                          /[.*+?^${}()|[\]\\]/g,
+                          "\\$&"
+                        )})`,
+                        "i"
+                      )
+                    )
+                    .map((chunk, i) =>
+                      chunk.toLowerCase() ===
+                      selectedIng.originalText.toLowerCase() ? (
+                        <mark
+                          key={i}
+                          className="bg-cyan-400/30 text-cyan-50"
+                        >
+                          {chunk}
+                        </mark>
+                      ) : (
+                        <span key={i}>{chunk}</span>
+                      )
+                    )
                 : product.extractedText}
             </pre>
           )}
@@ -293,16 +421,42 @@ export default function AnalysisPage() {
         <LabCanvas className="h-[320px]" autoRotate={false}>
           <VolumetricServingChamber
             factor={scaled?.valid ? scaled.factor : 1}
-            alertSeverity={findings.some((f) => f.severity === "alert") ? "alert" : findings.some((f) => f.severity === "warning") ? "warning" : "safe"}
+            alertSeverity={
+              findings.some((f) => f.severity === "alert")
+                ? "alert"
+                : findings.some((f) => f.severity === "warning")
+                  ? "warning"
+                  : "safe"
+            }
           />
         </LabCanvas>
+
         <Panel kicker="Printed vs calculated" title="Nutrition bars">
-          <p className="mb-3 text-xs text-slate-400">Bar widths track calculated amounts when the scale is valid.</p>
+          <p className="mb-3 text-xs text-slate-400">
+            Bar widths track calculated amounts when the scale is valid.
+          </p>
+
           <ul className="space-y-3">
             {product.nutrition.values.slice(0, 6).map((v) => {
-              const calc = scaled?.valid ? scaled.scaled.values.find((x) => x.nutrient === v.nutrient) : v;
+              const calc = scaled?.valid
+                ? scaled.scaled.values.find(
+                    (x) => x.nutrient === v.nutrient
+                  )
+                : v;
+
               const raw = calc?.amount ?? v.amount;
-              const width = raw === null ? 0 : Math.min(100, (raw / (v.amount && v.amount > 0 ? v.amount * 3 : 100)) * 100);
+              const width =
+                raw === null
+                  ? 0
+                  : Math.min(
+                      100,
+                      (raw /
+                        (v.amount && v.amount > 0
+                          ? v.amount * 3
+                          : 100)) *
+                        100
+                    );
+
               return (
                 <li key={v.nutrient}>
                   <div className="mb-1 flex justify-between text-xs">
@@ -311,6 +465,7 @@ export default function AnalysisPage() {
                       {formatNumber(raw)} {v.unit}
                     </span>
                   </div>
+
                   <div className="nutrition-bar" aria-hidden>
                     <span style={{ width: `${width}%` }} />
                   </div>
@@ -323,46 +478,65 @@ export default function AnalysisPage() {
 
       <div id="panel-nutrition-facts">
         <Panel kicker="Printed label" title="Nutrition facts">
-        <p className="mb-3 text-sm text-slate-400">
-          Serving {product.nutrition.servingSizeAmount} {product.nutrition.servingSizeUnit}
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-slate-400">
-                <th>Nutrient</th>
-                <th>Printed</th>
-                <th>Calculated</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {product.nutrition.values.map((v) => {
-                const calc = scaled?.scaled.values.find((x) => x.nutrient === v.nutrient);
-                return (
-                  <tr key={v.nutrient} className="border-t border-white/5">
-                    <td className="py-1">{v.nutrient}</td>
-                    <td>
-                      {formatNumber(v.amount)} {v.unit}
-                    </td>
-                    <td className="text-cyan-200">
-                      {formatNumber(calc?.amount ?? null)} {v.unit}
-                    </td>
-                    <td className="text-xs text-slate-500">{v.source}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {product.nutrition.incomplete && <p className="mt-2 text-amber-200">Nutrition panel incomplete.</p>}
-      </Panel>
+          <p className="mb-3 text-sm text-slate-400">
+            Serving {product.nutrition.servingSizeAmount}{" "}
+            {product.nutrition.servingSizeUnit}
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-slate-400">
+                  <th>Nutrient</th>
+                  <th>Printed</th>
+                  <th>Calculated</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {product.nutrition.values.map((v) => {
+                  const calc = scaled?.valid
+                    ? scaled.scaled.values.find(
+                        (x) => x.nutrient === v.nutrient
+                      )
+                    : null;
+
+                  return (
+                    <tr
+                      key={v.nutrient}
+                      className="border-t border-white/5"
+                    >
+                      <td className="py-1">{v.nutrient}</td>
+                      <td>
+                        {formatNumber(v.amount)} {v.unit}
+                      </td>
+                      <td className="text-cyan-200">
+                        {formatNumber(calc?.amount ?? null)} {v.unit}
+                      </td>
+                      <td className="text-xs text-slate-500">
+                        {v.source}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {product.nutrition.incomplete && (
+            <p className="mt-2 text-amber-200">
+              Nutrition panel incomplete.
+            </p>
+          )}
+        </Panel>
       </div>
 
       <Panel kicker="Reality check" title="Serving-size calculator">
         <p className="mb-3 text-xs text-slate-400">
           Calculated columns are proportional math, not medical portion advice.
         </p>
+
         <div className="flex flex-wrap gap-3">
           <Field label="New serving amount">
             <input
@@ -375,14 +549,21 @@ export default function AnalysisPage() {
               data-testid="serving-amount"
             />
           </Field>
+
           <Field label="Unit">
-            <select className={inputClass} value={unit} onChange={(e) => setUnit(e.target.value)} data-testid="serving-unit">
+            <select
+              className={inputClass}
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              data-testid="serving-unit"
+            >
               <option value="g">g</option>
               <option value="ml">ml</option>
               <option value="oz">oz</option>
               <option value="tablet">tablet</option>
             </select>
           </Field>
+
           <Button
             variant="ghost"
             onClick={() => {
@@ -393,13 +574,18 @@ export default function AnalysisPage() {
             Reset original
           </Button>
         </div>
+
         {scaled && !scaled.valid && (
           <p className="mt-2 text-sm text-rose-300" role="alert">
             {scaled.error}
           </p>
         )}
+
         {scaled?.valid && (
-          <p className="mt-2 text-sm text-cyan-200" data-testid="serving-factor">
+          <p
+            className="mt-2 text-sm text-cyan-200"
+            data-testid="serving-factor"
+          >
             Scale factor {scaled.factor.toFixed(3)}
           </p>
         )}
@@ -409,39 +595,64 @@ export default function AnalysisPage() {
         <Panel kicker="Potential benefits" title="Label-supported only">
           <ul className="space-y-2 text-sm">
             {product.benefits.map((b) => (
-              <li key={b.evidence.id} className="rounded-lg border border-white/10 p-3">
+              <li
+                key={b.evidence.id}
+                className="rounded-lg border border-white/10 p-3"
+              >
                 <p>{b.text}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {b.evidence.kind}: {b.evidence.sourceText || b.evidence.claim}
+                  {b.evidence.kind}:{" "}
+                  {b.evidence.sourceText || b.evidence.claim}
                 </p>
               </li>
             ))}
-            {!product.benefits.length && <li className="text-slate-400">No benefit claims were extracted.</li>}
+
+            {!product.benefits.length && (
+              <li className="text-slate-400">
+                No benefit claims were extracted.
+              </li>
+            )}
           </ul>
         </Panel>
+
         <Panel kicker="Potential concerns" title="With evidence">
           <ul className="space-y-2 text-sm">
             {product.concerns.map((c) => (
-              <li key={c.evidence.id} className="rounded-lg border border-rose-400/20 p-3">
+              <li
+                key={c.evidence.id}
+                className="rounded-lg border border-rose-400/20 p-3"
+              >
                 <p>{c.text}</p>
                 <p className="mt-1 text-xs text-rose-200/70">
-                  {c.evidence.kind}: {c.evidence.sourceText || c.evidence.claim}
+                  {c.evidence.kind}:{" "}
+                  {c.evidence.sourceText || c.evidence.claim}
                 </p>
               </li>
             ))}
-            {!product.concerns.length && <li className="text-slate-400">No evidenced concerns on this record.</li>}
+
+            {!product.concerns.length && (
+              <li className="text-slate-400">
+                No evidenced concerns on this record.
+              </li>
+            )}
           </ul>
         </Panel>
       </div>
 
       <div id="panel-allergens-section">
-        <Panel kicker="Dietary comparison" title="Evidence-grounded alerts & rules">
+        <Panel
+          kicker="Dietary comparison"
+          title="Evidence-grounded alerts & rules"
+        >
           {product.allergenStatement && (
-            <div className="mb-3 rounded-lg border border-white/10 bg-black/30 p-2.5 text-xs font-mono text-cyan-200">
-              <span className="text-slate-400 block mb-1">Declared &lsquo;Contains:&rsquo; Statement:</span>
+            <div className="mb-3 rounded-lg border border-white/10 bg-black/30 p-2.5 font-mono text-xs text-cyan-200">
+              <span className="mb-1 block text-slate-400">
+                Declared &lsquo;Contains:&rsquo; Statement:
+              </span>
               &ldquo;{product.allergenStatement.text}&rdquo;
             </div>
           )}
+
           <EvidenceGroundedAlerts
             comparisons={activeComparisons}
             onNavigateToEvidence={handleNavigateToEvidence}
@@ -456,6 +667,7 @@ export default function AnalysisPage() {
           {product.missingInformation.map((m) => (
             <li key={m}>{m}</li>
           ))}
+
           {product.uncertainties.map((m) => (
             <li key={m}>{m}</li>
           ))}

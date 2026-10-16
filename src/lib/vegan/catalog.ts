@@ -350,6 +350,13 @@ export function lookupIngredient(rawName: string): IngredientKnowledge | undefin
     (k) => k.name === n || k.aliases.some((a) => a.toLowerCase() === n),
   );
   if (exact) return exact;
+
+  // Prioritize NON-VEGAN matches first (e.g. milk, gelatin, whey) so compound ingredients containing milk are not masked by sugar
+  const nonVeganMatch = INGREDIENT_KNOWLEDGE.find(
+    (k) => k.veganStatus === "NON-VEGAN" && (n.includes(k.name) || k.aliases.some((a) => n.includes(a.toLowerCase()))),
+  );
+  if (nonVeganMatch) return nonVeganMatch;
+
   return INGREDIENT_KNOWLEDGE.find(
     (k) => n.includes(k.name) || k.aliases.some((a) => n.includes(a.toLowerCase())),
   );
