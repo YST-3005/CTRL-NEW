@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const MotionNav = motion.nav as any;
 
-const PUBLIC = new Set(["/", "/login", "/register", "/reset-password", "/store"]);
+const PUBLIC = new Set(["/", "/login", "/register", "/reset-password", "/store", "/evaluation"]);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();

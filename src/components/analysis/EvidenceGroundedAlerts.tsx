@@ -77,7 +77,7 @@ export function EvidenceGroundedAlerts({
             <p className="mt-2 text-sm text-slate-200">{comp.explanation}</p>
 
             {/* Exact Extracted Evidence snippet */}
-            {comp.originalExtractedText && (
+            {comp.originalExtractedText ? (
               <div className="mt-3 rounded-lg border border-white/10 bg-black/40 p-2.5 font-mono text-xs">
                 <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase tracking-wider mb-1">
                   <span>Exact Label Evidence</span>
@@ -91,7 +91,11 @@ export function EvidenceGroundedAlerts({
                   &ldquo;{comp.originalExtractedText}&rdquo;
                 </p>
               </div>
-            )}
+            ) : comp.severity !== "safe" ? (
+              <div className="mt-2 rounded-lg border border-dashed border-white/10 bg-white/5 p-2 text-xs text-slate-400 font-mono">
+                No readable supporting evidence found on physical label.
+              </div>
+            ) : null}
 
             {/* Threshold information if applicable */}
             {comp.thresholdApplied && (
@@ -217,6 +221,16 @@ export function EvidenceGroundedAlerts({
                 ))}
                 <Button
                   variant="ghost"
+                  className="w-full text-xs text-cyan-300 hover:text-white"
+                  onClick={() => {
+                    window.location.href = "/scanner";
+                  }}
+                  data-testid="action-upload-clearer"
+                >
+                  📷 Upload Clearer Image
+                </Button>
+                <Button
+                  variant="ghost"
                   className="w-full text-xs text-slate-400 hover:text-white"
                   onClick={() => {
                     onResolveConfirmation(activePromptComp.id, "leave_unresolved");
@@ -242,11 +256,11 @@ function getStatusBadgeMeta(status: EvidenceGroundedComparison["status"]): {
 } {
   switch (status) {
     case "CONFIRMED_CONFLICT":
-      return { label: "CONFIRMED CONFLICT", badgeTone: "alert", icon: "⛔" };
+      return { label: "CONFIRMED FINDING", badgeTone: "alert", icon: "⛔" };
     case "UNRESOLVED_CONTRADICTION":
       return { label: "UNRESOLVED CONTRADICTION", badgeTone: "alert", icon: "⚡" };
     case "NEEDS_USER_CONFIRMATION":
-      return { label: "NEEDS CONFIRMATION", badgeTone: "amber", icon: "❓" };
+      return { label: "NEEDS USER CONFIRMATION", badgeTone: "amber", icon: "❓" };
     case "UNCERTAIN":
       return { label: "UNCERTAIN", badgeTone: "amber", icon: "⚠️" };
     case "MISSING_INFORMATION":

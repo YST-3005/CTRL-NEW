@@ -461,9 +461,12 @@ export function evaluateEvidenceGroundedComparisons(params: {
   // -------------------------------------------------------------
   // Contradiction A: Model interpretation contradicts extracted evidence
   if (modelInterpretation) {
-    if (modelInterpretation.claimsVegan && product.dietary.veganStatus === "NON-VEGAN") {
-      const nonVeganNames = product.ingredients
-        .filter((i) => i.veganStatus === "NON-VEGAN")
+    if (
+      modelInterpretation.claimsVegan &&
+      (product.dietary.veganStatus === "NON-VEGAN" || product.dietary.veganStatus === "UNKNOWN")
+    ) {
+      const problematicIngs = product.ingredients
+        .filter((i) => i.veganStatus === "NON-VEGAN" || i.veganStatus === "UNKNOWN")
         .map((i) => i.name)
         .join(", ");
       comparisons.push({
@@ -472,19 +475,21 @@ export function evaluateEvidenceGroundedComparisons(params: {
         ruleCategory: "contradiction",
         ruleName: "Model vs Label Contradiction: Vegan Claim",
         status: "UNRESOLVED_CONTRADICTION",
-        severity: "alert",
-        explanation: `An external model interpreted this product as vegan, but explicit extracted ingredients contain non-vegan components (${nonVeganNames}). The physical label evidence takes precedence.`,
+        severity: product.dietary.veganStatus === "NON-VEGAN" ? "alert" : "warning",
+        explanation: `An external model interpreted this product as vegan, but explicit extracted ingredients contain ${
+          product.dietary.veganStatus === "NON-VEGAN" ? "non-vegan" : "ambiguous or unverified"
+        } components (${problematicIngs}). The physical label evidence takes precedence.`,
         supportingEvidenceRefs: product.ingredients
-          .filter((i) => i.veganStatus === "NON-VEGAN")
+          .filter((i) => i.veganStatus === "NON-VEGAN" || i.veganStatus === "UNKNOWN")
           .map((i) => i.id),
-        originalExtractedText: `Extracted non-vegan components: ${nonVeganNames}`,
+        originalExtractedText: `Extracted components requiring verification: ${problematicIngs}`,
         userConfirmationRequired: true,
         confirmationPrompt: {
           id: "contradiction-model-vegan-mismatch",
-          originalPhrase: nonVeganNames,
+          originalPhrase: problematicIngs,
           competingInterpretations: [
             "Model summary: Product is vegan",
-            `Label text evidence: Contains ${nonVeganNames}`,
+            `Label text evidence: Contains ${problematicIngs} with unverified origin`,
           ],
           impactReason:
             "Trusting an unsupported model claim over visible label ingredients risks allergen and dietary exposure.",

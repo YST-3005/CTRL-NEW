@@ -11,6 +11,7 @@ import { PackageMesh, ParticleField, RingField, ScanBeam } from "@/components/th
 import { ScannerChamber } from "@/components/three/models/ScannerChamber";
 import { CinematicProduct } from "@/components/three/models/CinematicProduct";
 import { ImageQualityHud } from "@/components/scanner/ImageQualityHud";
+import { StorageQuotaBanner } from "@/components/ui/StorageQuotaBanner";
 
 const LabCanvas = dynamic(() => import("@/components/three/LabCanvas").then((m) => m.LabCanvas), { ssr: false });
 
@@ -33,6 +34,8 @@ export default function ScannerPage() {
   const setForceFailNext = useGuardianStore((s) => s.setForceFailNext);
   const forceFailNext = useGuardianStore((s) => s.forceFailNext);
   const simulateDemoOcr = useGuardianStore((s) => s.simulateDemoOcr);
+  const prefs = useGuardianStore((s) => s.prefs);
+  const savePrefs = useGuardianStore((s) => s.savePrefs);
   const [drag, setDrag] = useState(false);
   const [manual, setManual] = useState("");
   const busy = phase === "uploading" || phase === "processing";
@@ -50,12 +53,94 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-4">
-        <div>
-          <p className="hud-label">Acquisition</p>
-          <h1 className="display text-3xl text-cyan-50">Scanner chamber</h1>
+    <div className="space-y-6">
+      <StorageQuotaBanner />
+
+      {/* Dietary Preference Filter Toolbar */}
+      <div className="rounded-2xl border border-cyan-400/20 bg-[#060b1c]/70 p-4 backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
+          <div>
+            <span className="font-syne text-xs font-semibold uppercase tracking-wider text-cyan-200">
+              Active Dietary Filters (Evaluated Against Scans)
+            </span>
+            <p className="text-xs text-slate-400">Toggle preferences before scanning to immediately evaluate label evidence.</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/preferences")}
+            className="text-xs text-slate-300 hover:text-white"
+          >
+            ⚙ All Preferences
+          </Button>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => savePrefs({ ...prefs, vegan: !prefs.vegan })}
+            className={`rounded-full px-3 py-1 text-xs font-mono transition-all ${
+              prefs.vegan ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : "text-slate-400 border border-white/10 hover:text-slate-200"
+            }`}
+          >
+            🌱 Vegan: {prefs.vegan ? "ON" : "OFF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => savePrefs({ ...prefs, vegetarian: !prefs.vegetarian })}
+            className={`rounded-full px-3 py-1 text-xs font-mono transition-all ${
+              prefs.vegetarian ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : "text-slate-400 border border-white/10 hover:text-slate-200"
+            }`}
+          >
+            🥗 Vegetarian: {prefs.vegetarian ? "ON" : "OFF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const hasMilk = prefs.allergensToFlag.includes("milk");
+              const next = hasMilk ? prefs.allergensToFlag.filter((a) => a !== "milk") : [...prefs.allergensToFlag, "milk"];
+              savePrefs({ ...prefs, allergensToFlag: next });
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-mono transition-all ${
+              prefs.allergensToFlag.includes("milk") ? "bg-red-500/20 text-red-200 border border-red-400/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]" : "text-slate-400 border border-white/10 hover:text-slate-200"
+            }`}
+          >
+            🥛 Avoid Milk: {prefs.allergensToFlag.includes("milk") ? "ACTIVE" : "OFF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const hasPeanuts = prefs.allergensToFlag.includes("peanuts");
+              const next = hasPeanuts ? prefs.allergensToFlag.filter((a) => a !== "peanuts") : [...prefs.allergensToFlag, "peanuts"];
+              savePrefs({ ...prefs, allergensToFlag: next });
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-mono transition-all ${
+              prefs.allergensToFlag.includes("peanuts") ? "bg-red-500/20 text-red-200 border border-red-400/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]" : "text-slate-400 border border-white/10 hover:text-slate-200"
+            }`}
+          >
+            🥜 Avoid Peanuts: {prefs.allergensToFlag.includes("peanuts") ? "ACTIVE" : "OFF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const hasSugar = prefs.ingredientsOfConcern.includes("added sugar");
+              const next = hasSugar ? prefs.ingredientsOfConcern.filter((a) => a !== "added sugar") : [...prefs.ingredientsOfConcern, "added sugar"];
+              savePrefs({ ...prefs, ingredientsOfConcern: next });
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-mono transition-all ${
+              prefs.ingredientsOfConcern.includes("added sugar") ? "bg-amber-500/20 text-amber-200 border border-amber-400/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]" : "text-slate-400 border border-white/10 hover:text-slate-200"
+            }`}
+          >
+            🍬 Avoid Added Sugar: {prefs.ingredientsOfConcern.includes("added sugar") ? "ACTIVE" : "OFF"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-4">
+          <div>
+            <p className="hud-label">Acquisition</p>
+            <h1 className="display text-3xl text-cyan-50">Scanner chamber</h1>
+          </div>
         <LabCanvas className="h-[360px]" autoRotate={!busy}>
           <ScannerChamber
             active={busy || phase === "failed"}
@@ -173,6 +258,75 @@ export default function ScannerPage() {
             </label>
           </div>
         </Panel>
+        <Panel kicker="Mission 4 Scenarios" title="Instant Test Launchers">
+          <p className="mb-3 text-xs text-slate-300">
+            One-click automated execution of the three required Mission 4 test scenarios:
+          </p>
+          <div className="space-y-2">
+            <Button
+              variant="primary"
+              className="w-full text-xs text-left justify-start bg-cyan-500/20 border-cyan-400/40 text-cyan-200 hover:bg-cyan-500/30"
+              onClick={async () => {
+                savePrefs({ ...prefs, vegan: true, allergensToFlag: ["milk", "peanuts"] });
+                const ocr = `HERSHEY'S MILK CHOCOLATE WITH PEANUTS
+Nutrition Facts
+Serving size 1 bar (41g)
+Calories 220
+Total Fat 14g
+Saturated Fat 6g
+Sodium 35mg
+Total Carbohydrate 22g
+Total Sugars 19g
+Protein 5g
+
+INGREDIENTS: Milk Chocolate (Sugar, Milk, Chocolate, Cocoa Butter, Milk Fat, Lecithin (Soy), PGPR, Natural Flavor), Peanuts.
+Contains: Milk, Soy, Peanuts.
+Manufactured by The Hershey Company, Hershey, PA 17033`;
+                await scanManual(ocr);
+                router.push("/analysis");
+              }}
+              data-testid="launch-m4-test-1"
+            >
+              🍫 Test 1: Clear Chocolate Label (Peanuts & Milk Avoidance)
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-xs text-left justify-start border-amber-500/30 text-amber-200 hover:bg-amber-500/10"
+              onClick={async () => {
+                savePrefs({ ...prefs, ingredientsOfConcern: ["gluten"] });
+                const ocr = `Nova Fuel Rolled Oats
+Ingredients: Oats, natural flavoring...
+(Nutrition panel partially obscured by glare and motion blur)`;
+                await scanManual(ocr);
+                router.push("/analysis");
+              }}
+              data-testid="launch-m4-test-2"
+            >
+              🌫️ Test 2: Blurry / Partially Obscured Label (Uncertainty & Retake)
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-xs text-left justify-start border-fuchsia-500/30 text-fuchsia-200 hover:bg-fuchsia-500/10"
+              onClick={async () => {
+                savePrefs({ ...prefs, vegan: true });
+                const ocr = `Apex Endurance Bar
+Ingredients: Rolled oats, brown rice syrup, glycerin, natural flavors, salt.
+Contains: May contain traces of milk.
+Nutrition Facts
+Serving size: 60g
+Calories: 240
+Total Sugars: 12g
+Sodium: 180mg`;
+                await scanManual(ocr);
+                router.push("/analysis");
+              }}
+              data-testid="launch-m4-test-3"
+            >
+              ⚡ Test 3: Contradictory Label (Ambiguous Glycerin & Model Mismatch)
+            </Button>
+          </div>
+        </Panel>
+
         <Panel kicker="Samples" title="Load demonstration product">
           <div className="grid gap-2">
             {SAMPLE_PRODUCTS.map((p) => (
@@ -206,6 +360,7 @@ export default function ScannerPage() {
           </Button>
         </Panel>
       </div>
+    </div>
     </div>
   );
 }
